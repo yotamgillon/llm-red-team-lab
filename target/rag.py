@@ -14,10 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 KB_DIR = Path(__file__).parent / "data" / "kb"
+COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 STOPWORDS = frozenset(
     "a an and are as at be by can do for from has have how i in is it me my of on or the to "
-    "what when where which who will with you your please tell about".split()
+    "what when where which who will with you your please tell about now".split()
 )
 
 
@@ -52,11 +53,16 @@ def load_docs(directory: Path = KB_DIR) -> list[Doc]:
 
 
 class Retriever:
-    """TF-IDF scorer: sum over query terms of tf * idf, title counted twice."""
+    """TF-IDF scorer: sum over query terms of tf * idf, title counted twice.
+
+    HTML comments are not indexed, so hidden text never influences ranking.
+    """
 
     def __init__(self, docs: list[Doc]) -> None:
         self.docs = docs
-        self._tf = [Counter(tokenize(d.title) * 2 + tokenize(d.body)) for d in docs]
+        self._tf = [
+            Counter(tokenize(d.title) * 2 + tokenize(COMMENT_RE.sub("", d.body))) for d in docs
+        ]
         df: Counter[str] = Counter()
         for tf in self._tf:
             df.update(tf.keys())
