@@ -305,4 +305,4 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [ ] M1  [ ] M2  [ ] M3  [ ] M4  [ ] M5  [ ] M6  [ ] M7
+**Status:** [x] M1  [ ] M2  [ ] M3  [ ] M4  [ ] M5  [ ] M6  [ ] M7
