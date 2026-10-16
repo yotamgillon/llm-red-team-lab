@@ -305,4 +305,6 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [x] M1  [ ] M2  [ ] M3  [ ] M4  [ ] M5  [ ] M6  [ ] M7
+**Status:** [x] M1  [x] M2  [ ] M3  [ ] M4  [ ] M5  [ ] M6  [ ] M7
+
+M2 deviations: detector tests are consolidated in `tests/test_detectors.py` (not one file per detector); client/runner tests share `tests/test_client_runner.py`; `tests/scanner_helpers.py` holds builders; `models.py` also defines `AttackResult`/`ScanResult` (every attack gets a result, `findings` = the vulnerable ones); the allowlist additionally refuses URL credentials, backslashes and whitespace.
