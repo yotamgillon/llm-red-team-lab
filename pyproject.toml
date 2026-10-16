@@ -18,6 +18,9 @@ dependencies = [
   "anthropic>=0.40",
 ]
 
+[project.scripts]
+redteam = "scanner.cli:app"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
 
@@ -26,6 +29,7 @@ include = ["target*", "scanner*"]
 
 [tool.setuptools.package-data]
 target = ["data/kb/*.md", "static/*.html"]
+scanner = ["attacks/*.yaml", "canaries.yaml"]
 
 [tool.ruff]
 line-length = 100
