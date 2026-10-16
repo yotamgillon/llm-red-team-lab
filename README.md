@@ -94,8 +94,8 @@ still holds. Reports land in `results/docker/`. The scan exits 1 when it finds v
 
 ### Sample report
 
-<!-- TODO(author): add the screenshot at docs/report.png, then replace this line with ![Sample report](docs/report.png) -->
-*Sample report screenshot: placeholder, to be added (`docs/report.png`).*
+![Sample report](docs/report.png)
+*Sample report from a scan of the deliberately vulnerable target, run in MOCK mode.*
 
 ## Results: before / after
 
