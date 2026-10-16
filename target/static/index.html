@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NovaBank Support (deliberately vulnerable lab target)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .banner { background: #fff3cd; border: 1px solid #e0c36a; padding: .5rem .75rem; border-radius: 6px; }
+  #log { border: 1px solid #ccc; border-radius: 6px; min-height: 240px; padding: .75rem; margin: 1rem 0; }
+  .me { color: #234; font-weight: 600; } .bot { margin-bottom: .75rem; }
+  form { display: flex; gap: .5rem; } input { flex: 1; padding: .5rem; }
+</style>
+</head>
+<body>
+<h1>NovaBank Support</h1>
+<p class="banner">Lab target: fictional bank, synthetic data, deliberately vulnerable.
+Run on localhost only.</p>
+<div id="log"></div>
+<form id="f"><input id="m" autocomplete="off" placeholder="Ask about fees, cards, refunds..." autofocus>
+<button>Send</button></form>
+<script>
+const log = document.getElementById('log');
+const history = [];
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('m');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  const me = document.createElement('div');
+  me.className = 'me';
+  me.textContent = 'You: ' + message;   // user text is safe here
+  log.appendChild(me);
+  const res = await fetch('/api/chat', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message, history}),
+  });
+  const data = await res.json();
+  const bot = document.createElement('div');
+  bot.className = 'bot';
+  // LLM05 SINK (deliberate): model output is injected as HTML without sanitising.
+  bot.innerHTML = data.reply_html;
+  log.appendChild(bot);
+  history.push({role: 'user', content: message}, {role: 'assistant', content: data.reply});
+});
+</script>
+</body>
+</html>
