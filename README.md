@@ -3,7 +3,7 @@
 Educational defensive-security project: a deliberately vulnerable, fully synthetic LLM chatbot
 ("NovaBank Support") plus an automated scanner based on the OWASP Top 10 for LLM Applications (2025).
 
-> Work in progress. Milestones 1-2 (target app, scanner core). See `PLAN.md`.
+> Work in progress. Milestones 1-3 (target app, scanner core, 33-attack library). See `PLAN.md`.
 
 ## Run the target (MOCK mode, no API key)
 

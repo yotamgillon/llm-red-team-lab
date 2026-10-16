@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from scanner.cli import app
+from scanner.loader import load_attacks
 
 runner = CliRunner()
 
@@ -53,13 +54,16 @@ def test_judge_flag_without_key_is_clear_error(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_list_attacks_and_validate() -> None:
+    total = len(load_attacks())
     listed = runner.invoke(app, ["list-attacks"])
     assert (
-        listed.exit_code == 0 and "LLM07-001" in listed.output and "10 attack(s)" in listed.output
+        listed.exit_code == 0
+        and "LLM07-001" in listed.output
+        and f"{total} attack(s)" in listed.output
     )
     only = runner.invoke(app, ["list-attacks", "--category", "LLM05"])
     assert "LLM05-001" in only.output and "LLM07-001" not in only.output
-    assert "OK: 10 attacks valid" in runner.invoke(app, ["validate"]).output
+    assert f"OK: {total} attacks valid" in runner.invoke(app, ["validate"]).output
 
 
 def test_validate_reports_bad_library(tmp_path) -> None:

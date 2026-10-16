@@ -107,10 +107,11 @@ def test_filter_attacks_by_category() -> None:
     assert len(filter_attacks(attacks, ["all"])) == len(attacks)
     assert len(filter_attacks(attacks, None)) == len(attacks)
     assert {a.category for a in filter_attacks(attacks, ["llm07", "LLM05"])} == {"LLM07", "LLM05"}
-    assert filter_attacks(attacks, ["LLM10"]) == []
+    assert {a.category for a in filter_attacks(attacks, ["LLM10"])} == {"LLM10"}
+    assert filter_attacks(attacks, ["LLM03"]) == []
 
 
-def test_full_scan_flags_every_first_ten_attack(target: TargetClient) -> None:
+def test_full_scan_flags_every_attack(target: TargetClient) -> None:
     attacks = load_attacks()
     result = run_scan(target, attacks)
     by_id = {r.attack_id: r for r in result.results}

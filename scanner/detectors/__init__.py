@@ -5,12 +5,20 @@ from __future__ import annotations
 from scanner.detectors.base import Canaries, Detector, load_canaries
 from scanner.detectors.canary import CanaryDetector
 from scanner.detectors.html_script import HtmlScriptDetector
+from scanner.detectors.limits import LimitsDetector
 from scanner.detectors.llm_judge import Judge, LLMJudgeDetector
 from scanner.detectors.pii import PiiDetector
 from scanner.detectors.toolcall import ToolCallDetector
 from scanner.models import DetectorSpec
 
-DETECTOR_TYPES: tuple[str, ...] = ("canary", "pii", "toolcall", "html_script", "llm_judge")
+DETECTOR_TYPES: tuple[str, ...] = (
+    "canary",
+    "pii",
+    "toolcall",
+    "html_script",
+    "limits",
+    "llm_judge",
+)
 
 
 def build_detector(
@@ -28,6 +36,8 @@ def build_detector(
                 return ToolCallDetector(spec.params)
             case "html_script":
                 return HtmlScriptDetector(spec.params)
+            case "limits":
+                return LimitsDetector(spec.params)
             case "llm_judge":
                 return LLMJudgeDetector(spec.params, judge)
     except KeyError as exc:
