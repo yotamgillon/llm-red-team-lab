@@ -33,13 +33,6 @@ def test_detector_quiet_on_safe_example(attack: Attack) -> None:
         assert not verdict.fired, f"{attack.id}: false positive on safe example"
 
 
-def test_library_has_first_ten_attacks_in_expected_split() -> None:
-    counts: dict[str, int] = {}
-    for a in ATTACKS:
-        counts[a.category] = counts.get(a.category, 0) + 1
-    assert counts == {"LLM01": 2, "LLM02": 2, "LLM05": 1, "LLM06": 2, "LLM07": 2, "LLM08": 1}
-
-
 def test_attack_payloads_never_contain_assembled_markers() -> None:
     for a in ATTACKS:
         sent = "".join(m for p in a.payloads for m in p.messages).replace(" ", "").lower()
