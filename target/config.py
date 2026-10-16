@@ -19,7 +19,8 @@ class ConfigError(RuntimeError):
 class Settings:
     """Immutable target settings.
 
-    ``secure_mode`` is read here in M1; the mitigations it switches on land in M5.
+    ``secure_mode`` switches on the M5 mitigations (guardrails, authz, limits, escaping). The
+    limit fields below are only enforced in secure mode; the vulnerable build has none.
     """
 
     mock_mode: bool = True
@@ -28,6 +29,16 @@ class Settings:
     anthropic_api_key: str | None = None
     anthropic_model: str = DEFAULT_MODEL
     max_tool_rounds: int = 3
+    staff_token: str | None = None  # secure mode: confirms refunds / may read internal docs
+    max_message_chars: int = 2_000
+    max_history_turns: int = 20
+    max_history_chars: int = 8_000
+    max_body_bytes: int = 64_000
+    max_output_tokens: int = 512
+    max_output_chars: int = 4_000
+    rate_limit_burst: int = 10
+    rate_limit_per_second: float = 1.0
+    refund_cap: float = 100.0
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -50,6 +61,7 @@ class Settings:
             lab_endpoints=env.get("LAB_ENDPOINTS", "true").strip().lower() in TRUE_VALUES,
             anthropic_api_key=key,
             anthropic_model=env.get("ANTHROPIC_MODEL") or DEFAULT_MODEL,
+            staff_token=(env.get("STAFF_TOKEN") or "").strip() or None,
         )
 
 

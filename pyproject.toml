@@ -28,7 +28,7 @@ dev = ["pytest>=8", "ruff>=0.5"]
 include = ["target*", "scanner*"]
 
 [tool.setuptools.package-data]
-target = ["data/kb/*.md", "static/*.html"]
+target = ["data/kb/*.md", "static/*.html", "static/*.js"]
 scanner = ["attacks/*.yaml", "canaries.yaml", "report/templates/*.j2"]
 
 [tool.ruff]

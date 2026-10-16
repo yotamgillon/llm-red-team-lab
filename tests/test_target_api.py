@@ -16,7 +16,8 @@ def chat(client: TestClient, message: str, **kw: object) -> dict:
 def test_health_and_page(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok", "mock": True, "secure": False}
     page = client.get("/")
-    assert page.status_code == 200 and "innerHTML" in page.text
+    assert page.status_code == 200 and "/static/chat.js" in page.text
+    assert "innerHTML" in client.get("/static/chat.js").text  # the LLM05 sink
 
 
 def test_chat_contract_shape(client: TestClient) -> None:
