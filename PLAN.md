@@ -305,7 +305,7 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [x] M5  [ ] M6  [ ] M7
+**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [x] M5  [x] M6  [ ] M7
 
 M2 deviations: detector tests are consolidated in `tests/test_detectors.py` (not one file per detector); client/runner tests share `tests/test_client_runner.py`; `tests/scanner_helpers.py` holds builders; `models.py` also defines `AttackResult`/`ScanResult` (every attack gets a result, `findings` = the vulnerable ones); the allowlist additionally refuses URL credentials, backslashes and whitespace.
 
@@ -322,6 +322,8 @@ M5 deviations and notes:
 - Secure `lookup_account` needs a session token and returns only the caller's own accounts with `account_id, balance, name, masked email` (the SQL selects only those columns, `Database.find_own_accounts`).
 - Refunds in secure mode: anonymous -> denied; not the caller's account (or no such account, same message) -> denied; amount <= 0, NaN/inf or above `refund_cap` (100) -> denied; otherwise `pending_confirmation` and nothing is credited until staff confirms. Refund requests above the cap are refused outright rather than queued.
 - Limits (secure only, see `Settings`): body 64 KB (Content-Length check, 413), message 2000 chars, history 20 turns / 8000 chars (413), `max_tokens` 512 plus a 4000-char output cap, token bucket of 10 requests refilling 1/s per client IP (429 + Retry-After; `X-Forwarded-For` is ignored).
+
+M6 deviations: `scripts/run_scans.py` scans in-process (TestClient, no server processes) and adds a third `secure-naive-model` ablation result; `compare.md` and `compare-ablation.md` come from `redteam compare`. `docs/mitigations.md` was not part of the requested scope and is not written. Results: before 33/33 vulnerable, after 0/33, ablation 8/33 (the prompt-level-dependent set).
 
 ### What is real code and what is simulated in MOCK mode
 
