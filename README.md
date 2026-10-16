@@ -120,8 +120,7 @@ proves the code-level controls, not how a real LLM behaves.
 
 ### Real-model run (Claude Haiku)
 
-<!-- TODO(author): add the real-Haiku run results here (never run in CI). -->
-*Placeholder: results of a small run against a real Haiku model, to be added.*
+**Future work:** a run against a real model (claude-haiku) is planned and will be compared with the MOCK results.
 
 ## What I learned
 
