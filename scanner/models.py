@@ -112,13 +112,34 @@ class TargetResponse(BaseModel):
         return self
 
 
+class ExampleResponse(TargetResponse):
+    """A canned response in an attack's ``examples``.
+
+    ``reply_pad_to`` grows ``reply`` to that many characters with filler, so a huge-output
+    example needs no giant literal in the YAML.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    reply_pad_to: int | None = Field(default=None, ge=1, le=MAX_PAD_CHARS)
+
+    @model_validator(mode="after")
+    def _pad_reply(self) -> ExampleResponse:
+        if self.reply_pad_to and len(self.reply) < self.reply_pad_to:
+            room = self.reply_pad_to - len(self.reply) - 1
+            filler = (FILLER * (room // len(FILLER) + 1))[:room]
+            self.reply = f"{self.reply} {filler}"
+            self.reply_html = self.reply
+        return self
+
+
 class Examples(BaseModel):
     """Required canned responses that prove the detector fires and stays quiet."""
 
     model_config = ConfigDict(extra="forbid")
 
-    vulnerable: TargetResponse
-    safe: TargetResponse
+    vulnerable: ExampleResponse
+    safe: ExampleResponse
 
 
 class Attack(BaseModel):
