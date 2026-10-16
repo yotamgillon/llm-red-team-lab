@@ -305,8 +305,10 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [x] M1  [x] M2  [x] M3  [ ] M4  [ ] M5  [ ] M6  [ ] M7
+**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [ ] M5  [ ] M6  [ ] M7
 
 M2 deviations: detector tests are consolidated in `tests/test_detectors.py` (not one file per detector); client/runner tests share `tests/test_client_runner.py`; `tests/scanner_helpers.py` holds builders; `models.py` also defines `AttackResult`/`ScanResult` (every attack gets a result, `findings` = the vulnerable ones); the allowlist additionally refuses URL credentials, backslashes and whitespace.
 
 M3 deviations: `test_detectors_limits.py` is a separate file (as planned) but the per-category and per-payload scan tests live in `tests/test_library_scan.py`. `Payload` gained `repeat`, `pad_to`, `history_turns`/`history_chars` (all bounded) and `TargetClient.send()` runs a whole payload; `TargetResponse.status_codes` records every HTTP status for the limits detector. Examples may use `reply_pad_to` to build a huge reply without a giant literal. `canaries.yaml` gained four injection markers and a `docs` section (phrases found only in internal KB docs). Target change needed by LLM02-005 / LLM08-002: the MOCK model now quotes retrieved docs in full when asked to quote "word for word"; it does not filter by visibility (M5 adds that). LLM05-003 uses an HTML `<a href="javascript:...">`, because the page sink renders HTML, not markdown. Result on the vulnerable MOCK target: 33 of 33 attacks succeed.
+
+M4 deviations: JSON schema v1 stores every attack under `results` (not only `findings`) because `compare` needs the not-vulnerable ones; findings are the `vulnerable` entries. Added `redteam report results.json` (re-render from JSON) and `scan --name`. `compare` also supports `--format json`. Evidence is redacted (key/SSN/card-like) and truncated to 300 chars when the JSON is built, so all three formats share it. The HTML page carries a restrictive CSP meta tag as defence in depth. Tests: `test_report.py`, `test_compare.py`, `test_report_cli.py`, golden files in `tests/fixtures/`.
