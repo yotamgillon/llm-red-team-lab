@@ -1,0 +1,41 @@
+# Deliberately vulnerable lab target. Published on 127.0.0.1 only. Never expose it.
+#
+#   docker compose --profile scan up --build --abort-on-container-exit --exit-code-from scanner
+#
+# The scanner shares the target's network namespace, so it reaches the target as
+# http://localhost:8000 and the scanner's localhost-only allowlist still holds.
+# Reports are written to ./results/docker/ (the scan exits 1 when it finds vulnerabilities).
+services:
+  target:
+    build: .
+    environment:
+      MOCK_MODE: "true"
+      SECURE_MODE: "${SECURE_MODE:-false}"
+      LAB_ENDPOINTS: "true"
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  scanner:
+    build: .
+    profiles: [scan]
+    network_mode: "service:target"
+    depends_on:
+      target:
+        condition: service_healthy
+    volumes:
+      - ./results/docker:/app/out
+    user: root
+    command:
+      - redteam
+      - scan
+      - --target
+      - http://localhost:8000
+      - --out
+      - /app/out
+      - --name
+      - ${SCAN_NAME:-docker-scan}
