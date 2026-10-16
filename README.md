@@ -3,7 +3,7 @@
 Educational defensive-security project: a deliberately vulnerable, fully synthetic LLM chatbot
 ("NovaBank Support") plus an automated scanner based on the OWASP Top 10 for LLM Applications (2025).
 
-> Work in progress. Milestone 1 (target app) only. See `PLAN.md`.
+> Work in progress. Milestones 1-2 (target app, scanner core). See `PLAN.md`.
 
 ## Run the target (MOCK mode, no API key)
 
@@ -13,3 +13,14 @@ uvicorn target.main:app --port 8000
 ```
 
 Open http://127.0.0.1:8000. **Deliberately vulnerable: never expose it beyond localhost.**
+
+## Run the scanner (localhost targets only)
+
+```bash
+redteam validate
+redteam list-attacks
+redteam scan --target http://localhost:8000 --categories all   # exit 1 if any finding
+```
+
+The scanner refuses any target whose parsed hostname is not exactly `localhost`, `127.0.0.1` or
+`::1`, and never follows redirects.
