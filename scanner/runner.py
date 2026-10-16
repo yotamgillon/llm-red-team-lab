@@ -36,7 +36,7 @@ def run_attack(
     for payload in attack.payloads:
         try:
             client.reset()
-            response = client.chat(payload.messages, payload.headers)
+            response = client.send(payload)
         except TargetError as exc:
             return base.model_copy(update={"status": "error", "error": str(exc)}), mode
         mode = response.mode or mode

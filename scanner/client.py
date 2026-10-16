@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 from scanner.allowlist import assert_allowed
-from scanner.models import TargetResponse
+from scanner.models import Payload, TargetResponse
 
 
 class TargetError(RuntimeError):
@@ -64,13 +64,16 @@ class TargetClient:
         headers: dict[str, str] | None = None,
         *,
         lab_state: bool = True,
+        history: list[dict[str, str]] | None = None,
     ) -> TargetResponse:
         """Send ``messages`` as consecutive turns and return the last response.
 
-        Earlier user messages and the target's replies are replayed as ``history``. When
+        Earlier user messages and the target's replies are replayed as ``history`` (after any
+        ``history`` given). ``status_codes`` lists the HTTP status of every turn. When
         ``lab_state`` is true the refund ledger from ``/_lab/state`` is attached (if available).
         """
-        history: list[dict[str, str]] = []
+        history = list(history or [])
+        codes: list[int] = []
         last: TargetResponse | None = None
         for message in messages:
             response = self._request(
@@ -85,11 +88,32 @@ class TargetClient:
                 data = {}
             data = data if isinstance(data, dict) else {}
             last = TargetResponse.model_validate({**data, "status_code": response.status_code})
+            codes.append(response.status_code)
             history += [
                 {"role": "user", "content": message},
                 {"role": "assistant", "content": last.reply},
             ]
         assert last is not None
+        last.status_codes = codes
+        if lab_state:
+            last.lab_refunds = self.lab_refunds()
+        return last
+
+    def send(self, payload: Payload, *, lab_state: bool = True) -> TargetResponse:
+        """Send a whole :class:`Payload` (padding, synthetic history, burst) and return the last
+        response, with ``status_codes`` covering every request of every repetition."""
+        codes: list[int] = []
+        last: TargetResponse | None = None
+        for _ in range(payload.repeat):
+            last = self.chat(
+                payload.expanded_messages(),
+                payload.headers,
+                lab_state=False,
+                history=payload.history(),
+            )
+            codes += last.status_codes
+        assert last is not None
+        last.status_codes = codes
         if lab_state:
             last.lab_refunds = self.lab_refunds()
         return last

@@ -21,14 +21,52 @@ class Severity(StrEnum):
     INFO = "info"
 
 
+FILLER = "lorem ipsum dolor sit amet "
+MAX_PAD_CHARS = 500_000
+MAX_REPEAT = 100
+MAX_HISTORY_TURNS = 2_000
+
+
 class Payload(BaseModel):
-    """One request sequence. ``messages`` is a list so multi-turn attacks are possible."""
+    """One request sequence. ``messages`` is a list so multi-turn attacks are possible.
+
+    Generated-load helpers keep big payloads out of the YAML: ``pad_to`` grows the last message
+    to that many characters with filler, ``history_turns`` prepends synthetic earlier turns of
+    ``history_chars`` characters each, and ``repeat`` sends the whole sequence N times (a burst).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     name: str
     messages: list[str] = Field(min_length=1)
     headers: dict[str, str] = Field(default_factory=dict)
+    repeat: int = Field(default=1, ge=1, le=MAX_REPEAT)
+    pad_to: int | None = Field(default=None, ge=1, le=MAX_PAD_CHARS)
+    history_turns: int = Field(default=0, ge=0, le=MAX_HISTORY_TURNS)
+    history_chars: int = Field(default=200, ge=1, le=5_000)
+
+    def expanded_messages(self) -> list[str]:
+        """Return ``messages`` with the last one padded to ``pad_to`` characters (if set)."""
+        out = list(self.messages)
+        if self.pad_to is not None and len(out[-1]) < self.pad_to:
+            room = self.pad_to - len(out[-1]) - 1
+            filler = (FILLER * (room // len(FILLER) + 1))[:room]
+            out[-1] = f"{out[-1]} {filler}"
+        return out
+
+    def history(self) -> list[dict[str, str]]:
+        """Return the synthetic earlier turns (alternating user/assistant filler)."""
+        turn = (FILLER * (self.history_chars // len(FILLER) + 1))[: self.history_chars]
+        return [
+            {"role": "user" if i % 2 == 0 else "assistant", "content": turn}
+            for i in range(self.history_turns)
+        ]
+
+    def sent_chars(self) -> int:
+        """Characters of message text plus synthetic history in ONE repetition of this payload."""
+        return sum(len(m) for m in self.expanded_messages()) + self.history_turns * (
+            self.history_chars
+        )
 
 
 class DetectorSpec(BaseModel):
@@ -64,6 +102,7 @@ class TargetResponse(BaseModel):
     mode: dict[str, bool] = Field(default_factory=dict)
     blocked: str | None = None
     status_code: int = 200
+    status_codes: list[int] = Field(default_factory=list)
     lab_refunds: list[dict[str, Any]] | None = None
 
     @model_validator(mode="after")
