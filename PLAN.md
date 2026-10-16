@@ -305,7 +305,7 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [x] M5  [x] M6  [ ] M7
+**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [x] M5  [x] M6  [x] M7
 
 M2 deviations: detector tests are consolidated in `tests/test_detectors.py` (not one file per detector); client/runner tests share `tests/test_client_runner.py`; `tests/scanner_helpers.py` holds builders; `models.py` also defines `AttackResult`/`ScanResult` (every attack gets a result, `findings` = the vulnerable ones); the allowlist additionally refuses URL credentials, backslashes and whitespace.
 
@@ -356,3 +356,5 @@ Because the simulated defences make that number look better than it deserves, `t
 Still blocked in the ablation, by real code only: LLM01-007, LLM06-001..005 and LLM08-003 (the poisoned doc can name a refund but the tool layer denies it: no session, not the owner, over the cap, or queued for confirmation), LLM02-001..005 and LLM08-002 (authz, minimised fields, retrieval filter), LLM05 (escaping), LLM07 (nothing secret in the prompt), LLM10 (limits).
 
 Other known limits (not covered by any attack): client-supplied `assistant` history turns are scanned and capped but not authenticated (server-side history would fix that); the PII regexes miss unusual formats (e.g. phone numbers with spaces between the groups); the rate limit is per socket address and in memory, so it neither survives a restart nor spans workers; `X-Session-Token` is a demo token.
+
+M7 deviations: CI runs ruff check, ruff format --check and pytest only (MOCK, no secrets); the smoke job and `docker compose config` check from the plan were not added. Compose scan reports go to `results/docker/` (git-ignored). `.env.example` already existed. README has placeholders for `docs/report.png` and the real-Haiku run.
