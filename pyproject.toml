@@ -29,7 +29,7 @@ include = ["target*", "scanner*"]
 
 [tool.setuptools.package-data]
 target = ["data/kb/*.md", "static/*.html"]
-scanner = ["attacks/*.yaml", "canaries.yaml"]
+scanner = ["attacks/*.yaml", "canaries.yaml", "report/templates/*.j2"]
 
 [tool.ruff]
 line-length = 100

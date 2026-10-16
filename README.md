@@ -20,6 +20,9 @@ Open http://127.0.0.1:8000. **Deliberately vulnerable: never expose it beyond lo
 redteam validate
 redteam list-attacks
 redteam scan --target http://localhost:8000 --categories all   # exit 1 if any finding
+redteam scan --out results/ --format md,html,json --name before   # write reports
+redteam report results/before.json --out results/                 # re-render from JSON
+redteam compare results/before.json results/after.json [--fail-on-regression]
 ```
 
 The scanner refuses any target whose parsed hostname is not exactly `localhost`, `127.0.0.1` or
