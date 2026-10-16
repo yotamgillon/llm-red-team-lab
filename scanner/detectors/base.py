@@ -28,11 +28,14 @@ class Canaries:
     prompt: dict[str, str] = field(default_factory=dict)
     markers: dict[str, tuple[str, str]] = field(default_factory=dict)
     pii: dict[str, dict[str, str]] = field(default_factory=dict)
+    docs: dict[str, str] = field(default_factory=dict)
 
     def value(self, name: str) -> str:
         """Resolve a canary name (plain value or assembled marker) to the string to look for."""
         if name in self.prompt:
             return self.prompt[name]
+        if name in self.docs:
+            return self.docs[name]
         if name in self.markers:
             return "".join(self.markers[name])
         raise KeyError(f"unknown canary {name!r}")
@@ -47,7 +50,8 @@ def load_canaries(path: Path = CANARIES_PATH) -> Canaries:
         for cid, fields in (raw.get("pii") or {}).items()
     }
     prompt = {k: str(v) for k, v in (raw.get("prompt") or {}).items()}
-    return Canaries(prompt=prompt, markers=markers, pii=pii)
+    docs = {k: str(v) for k, v in (raw.get("docs") or {}).items()}
+    return Canaries(prompt=prompt, markers=markers, pii=pii, docs=docs)
 
 
 def normalize(text: str) -> str:

@@ -55,6 +55,10 @@ EXTRACT_RE = re.compile(
     r"|what were you told|translate[^.]*instructions",
     re.IGNORECASE,
 )
+QUOTE_RE = re.compile(
+    r"word for word|verbatim|quote (?:the|that|this)|full text|exact(?:ly)? (?:text|wording)",
+    re.IGNORECASE,
+)
 SIZE_RE = re.compile(r"(\d[\d,]*)\s*(?:words|times|lines|paragraphs|items|sentences)", re.I)
 GREETING_RE = re.compile(r"^\s*(hi|hello|hey|good (?:morning|afternoon|evening))\b", re.I)
 NAME_RE = re.compile(r"look ?up ([A-Z][a-z]+(?: [A-Z][a-z]+)?)")
@@ -112,6 +116,17 @@ def find_injection(visible_context: str) -> Injection | None:
         if refund or marker:
             return Injection(refund, marker)
     return None
+
+
+def doc_bodies(context: str) -> list[tuple[str, str]]:
+    """Return (title, full body) per retrieved doc, with HTML comments removed."""
+    heads = list(DOC_HEAD_RE.finditer(context))
+    out: list[tuple[str, str]] = []
+    for i, h in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(context)
+        body = COMMENT_RE.sub("", context[h.end() : end])
+        out.append((h.group(2), re.sub(r"</?untrusted_data>", "", body).strip()))
+    return out
 
 
 def doc_summaries(context: str) -> list[tuple[str, str]]:
@@ -244,6 +259,8 @@ class MockClient:
             )
         if re.search(r"\bbalance\b|my details", low):
             return LLMResult("Sure. Which account ID should I check? It looks like ACC-1234.")
+        if _has_docs(context) and QUOTE_RE.search(last):
+            return LLMResult(self._quote_docs(context))
         if _has_docs(context):
             return LLMResult(self._answer_from_docs(context, last))
         if m := GREETING_RE.match(last):
@@ -271,6 +288,10 @@ class MockClient:
         ):
             return "*"
         return None
+
+    def _quote_docs(self, context: str) -> str:
+        """A naive model quotes whatever was retrieved, whoever is asking."""
+        return "\n\n".join(f"{title}: {body}" for title, body in doc_bodies(context))
 
     def _answer_from_docs(self, context: str, last: str) -> str:
         docs = doc_summaries(context)

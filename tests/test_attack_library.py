@@ -74,3 +74,15 @@ def test_payload_markers_are_split_in_their_attacks() -> None:
         text = " ".join(attack.payloads[0].messages)
         first, second = CANARIES.markers[marker]
         assert f'"{first}" and "{second}"' in text
+
+
+def test_doc_canaries_exist_only_in_internal_kb_docs() -> None:
+    from target.rag import load_docs
+
+    docs = load_docs()
+    for name, phrase in CANARIES.docs.items():
+        holders = [
+            d for d in docs if " ".join(phrase.lower().split()) in " ".join(d.body.lower().split())
+        ]
+        assert holders, f"{name}: phrase not found in any KB doc"
+        assert all(d.visibility == "internal" for d in holders), name
