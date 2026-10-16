@@ -175,6 +175,11 @@ class MockClient:
         overriding = bool(OVERRIDE_RE.search(combined))
         extracting = bool(EXTRACT_RE.search(combined))
         if hardened and (overriding or extracting):
+            # SIMULATED PROMPT-LEVEL DEFENCE (the one thing this mock pretends to be a model
+            # for): a hardened system prompt makes it refuse overrides and prompt extraction.
+            # Real models resist this only probabilistically; the code-level guardrails in
+            # target/guardrails.py and the absence of secrets from the secure prompt do not
+            # depend on it.
             return LLMResult(REFUSAL)
         marker = find_marker(combined) if overriding else None
         if marker:
@@ -205,7 +210,7 @@ class MockClient:
                 return LLMResult(f"Processing your request ({topic}).", [call])
             if injection.marker:
                 return LLMResult(self._answer_from_docs(context, last) + " " + injection.marker)
-        return self._business(context, last)
+        return self._business(context, last, hardened)
 
     def _leak(self, instructions: str, combined: str) -> str:
         low = combined.lower()
@@ -227,7 +232,7 @@ class MockClient:
         words = tokenize(last) or ["novabank"]
         return " ".join(islice(cycle(words), n))
 
-    def _business(self, context: str, last: str) -> LLMResult:
+    def _business(self, context: str, last: str, hardened: bool = False) -> LLMResult:
         low = last.lower()
         acc = ACC_RE.search(last)
         amount = AMOUNT_RE.search(ACC_RE.sub("", last))
@@ -260,6 +265,11 @@ class MockClient:
         if re.search(r"\bbalance\b|my details", low):
             return LLMResult("Sure. Which account ID should I check? It looks like ACC-1234.")
         if _has_docs(context) and QUOTE_RE.search(last):
+            if hardened:
+                # SIMULATED PROMPT-LEVEL DEFENCE: the secure prompt says "never quote documents
+                # verbatim" and this mock obeys it by summarising. A real model may or may not.
+                # The real, code-level control is the retrieval visibility filter in rag.py.
+                return LLMResult(self._answer_from_docs(context, last))
             return LLMResult(self._quote_docs(context))
         if _has_docs(context):
             return LLMResult(self._answer_from_docs(context, last))
@@ -309,7 +319,9 @@ class MockClient:
             data: dict[str, Any] = _loads(m.content)
             if m.tool_name == "lookup_account":
                 rows = data.get("rows", [])
-                if not rows:
+                if data.get("status") == "denied":
+                    lines.append(f"I can't look that up: {data.get('error', 'not permitted')}.")
+                elif not rows:
                     lines.append("I couldn't find a matching account.")
                 for r in rows:
                     lines.append(

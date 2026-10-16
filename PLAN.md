@@ -305,10 +305,52 @@ All detectors share one interface and one test pattern: `tests/fixtures/response
 2. Keep to the file lists above; note any deviation in the milestone's status line.
 3. Finish with `ruff check` + `pytest` green, then tick the milestone below.
 
-**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [ ] M5  [ ] M6  [ ] M7
+**Status:** [x] M1  [x] M2  [x] M3  [x] M4  [x] M5  [ ] M6  [ ] M7
 
 M2 deviations: detector tests are consolidated in `tests/test_detectors.py` (not one file per detector); client/runner tests share `tests/test_client_runner.py`; `tests/scanner_helpers.py` holds builders; `models.py` also defines `AttackResult`/`ScanResult` (every attack gets a result, `findings` = the vulnerable ones); the allowlist additionally refuses URL credentials, backslashes and whitespace.
 
 M3 deviations: `test_detectors_limits.py` is a separate file (as planned) but the per-category and per-payload scan tests live in `tests/test_library_scan.py`. `Payload` gained `repeat`, `pad_to`, `history_turns`/`history_chars` (all bounded) and `TargetClient.send()` runs a whole payload; `TargetResponse.status_codes` records every HTTP status for the limits detector. Examples may use `reply_pad_to` to build a huge reply without a giant literal. `canaries.yaml` gained four injection markers and a `docs` section (phrases found only in internal KB docs). Target change needed by LLM02-005 / LLM08-002: the MOCK model now quotes retrieved docs in full when asked to quote "word for word"; it does not filter by visibility (M5 adds that). LLM05-003 uses an HTML `<a href="javascript:...">`, because the page sink renders HTML, not markdown. Result on the vulnerable MOCK target: 33 of 33 attacks succeed.
 
 M4 deviations: JSON schema v1 stores every attack under `results` (not only `findings`) because `compare` needs the not-vulnerable ones; findings are the `vulnerable` entries. Added `redteam report results.json` (re-render from JSON) and `scan --name`. `compare` also supports `--format json`. Evidence is redacted (key/SSN/card-like) and truncated to 300 chars when the JSON is built, so all three formats share it. The HTML page carries a restrictive CSP meta tag as defence in depth. Tests: `test_report.py`, `test_compare.py`, `test_report_cli.py`, golden files in `tests/fixtures/`.
+
+M5 deviations and notes:
+
+- Files: `guardrails.py`, `ratelimit.py` as planned; the sanitiser and ingestion check live in `rag.py` (`sanitize_untrusted`, `find_injection`), wrapping in `prompts.build_system_prompt(untrusted=True)`. Tests: `tests/test_target_secure.py` (one group per weakness row plus vulnerable-mode regressions) and `tests/test_secure_scan.py` (every attack category scanned against `SECURE_MODE=true`, plus the ablation below).
+- The chat page's script moved from inline to `target/static/chat.js` so secure mode can send a CSP without `unsafe-inline`. Behaviour in vulnerable mode is unchanged (the `innerHTML` sink is still there).
+- `POST /_lab/reset` also clears the rate limiter, otherwise the LLM10 burst would rate-limit the next attack and hide its real result. Lab endpoints are off when `LAB_ENDPOINTS=false`.
+- Staff token (`STAFF_TOKEN`, random per process when unset) unlocks both refund confirmation and `internal` KB docs. It is a lab stand-in for staff authentication; `X-Session-Token` customer tokens are static seed values, not real session management.
+- Secure `lookup_account` needs a session token and returns only the caller's own accounts with `account_id, balance, name, masked email` (the SQL selects only those columns, `Database.find_own_accounts`).
+- Refunds in secure mode: anonymous -> denied; not the caller's account (or no such account, same message) -> denied; amount <= 0, NaN/inf or above `refund_cap` (100) -> denied; otherwise `pending_confirmation` and nothing is credited until staff confirms. Refund requests above the cap are refused outright rather than queued.
+- Limits (secure only, see `Settings`): body 64 KB (Content-Length check, 413), message 2000 chars, history 20 turns / 8000 chars (413), `max_tokens` 512 plus a 4000-char output cap, token bucket of 10 requests refilling 1/s per client IP (429 + Retry-After; `X-Forwarded-For` is ignored).
+
+### What is real code and what is simulated in MOCK mode
+
+| Mitigation | Real, model-independent code | Simulated in the MOCK model (prompt-level) |
+|---|---|---|
+| Input guardrail (regex heuristics, base64 decode, joined turns) | `guardrails.check_input` | - |
+| Output guardrail (secret + PII redaction, length cap) | `guardrails.filter_output` | - |
+| No secrets in the system prompt | `SECURE_PROMPT` (tested to contain none) | - |
+| Hardened prompt makes the model refuse overrides / prompt extraction | prompt text only | **`mock_client`: refuses when `[HARDENED]` is in the system prompt** |
+| "Summarise documents, never quote them" | prompt text + retrieval filter below | **`mock_client`: summarises instead of quoting when hardened** |
+| Retrieved docs are data | `rag.sanitize_untrusted` strips comments and instruction-like lines; ingestion check flags kb_007 | **`mock_client`: ignores content wrapped in `<untrusted_data>`** |
+| Internal docs never retrieved for ordinary users | `Retriever.search(allow_internal=False)` before ranking | - |
+| Tool authz, least privilege, refund cap, human confirmation | `tools.py`, `db.py`, `/api/refunds/{id}/confirm` | - |
+| HTML escaping + CSP + nosniff | `guardrails.escape_html`, `main.py` middleware | - |
+| Length limits, rate limit | `main.py`, `ratelimit.py` | - |
+
+The simulated rows are marked `SIMULATED PROMPT-LEVEL DEFENCE` in `mock_client.py`. A real model follows a hardened prompt only probabilistically, so those rows say nothing about real-model robustness.
+
+### Result: attacks that still succeed in secure mode
+
+Default secure target, MOCK model: **0 of 33 attacks succeed** (in-process and over real HTTP with `redteam scan`). The attacks were not changed.
+
+Because the simulated defences make that number look better than it deserves, `tests/test_secure_scan.py` also ablates them: a naive model that ignores the hardened prompt, with the input heuristics, the document sanitiser and the untrusted wrapper switched off, leaving only the real code layers. Result: 8 attacks succeed again, exactly these, and the test pins the set:
+
+| Attacks | Why they succeed without the soft layers |
+|---|---|
+| LLM01-001 .. 006 (override, DAN persona, fake system block, base64, Spanish, two-turn split) | The only code-level barrier is the heuristic input filter, which knows phrasings. Producing attacker-chosen text has no hard code control: the output filter cannot tell it from a normal answer. A paraphrase the regexes do not know (`test_known_gap_paraphrased_injection_passes_the_heuristics`) plus a model that does not hold its prompt gets through. |
+| LLM01-008, LLM08-001 (marker planted in the poisoned doc) | Same: held by the document sanitiser and the untrusted wrapper, which only protect against what they recognise. |
+
+Still blocked in the ablation, by real code only: LLM01-007, LLM06-001..005 and LLM08-003 (the poisoned doc can name a refund but the tool layer denies it: no session, not the owner, over the cap, or queued for confirmation), LLM02-001..005 and LLM08-002 (authz, minimised fields, retrieval filter), LLM05 (escaping), LLM07 (nothing secret in the prompt), LLM10 (limits).
+
+Other known limits (not covered by any attack): client-supplied `assistant` history turns are scanned and capped but not authenticated (server-side history would fix that); the PII regexes miss unusual formats (e.g. phone numbers with spaces between the groups); the rate limit is per socket address and in memory, so it neither survives a restart nor spans workers; `X-Session-Token` is a demo token.
