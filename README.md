@@ -2,15 +2,9 @@
 
 [![CI](https://github.com/yotamgillon/llm-red-team-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/yotamgillon/llm-red-team-lab/actions/workflows/ci.yml)
 
-## Disclaimer
-
-**This is an educational project.** The target app ("NovaBank Support") is deliberately vulnerable
-and fully synthetic: no real brands, people, keys or customer data. The scanner only talks to
-`localhost`, `127.0.0.1` and `::1` (parsed hostname, exact match, redirects never followed), so it
-can only attack the app included here. Never expose the target beyond localhost, and never point
-attack tooling at systems you do not own or have written permission to test.
-
 ## What it is
+
+**Headline result:** 33 attacks; all 33 succeed on the vulnerable target, 0 succeed with `SECURE_MODE=true`, and 8 (all prompt injection) succeed again once the soft prompt-level layers are removed.
 
 A complete defensive loop in one repo: build a deliberately vulnerable LLM chatbot, attack it
 automatically, read the report, fix it, and prove the fix with a before/after scan.
@@ -22,6 +16,14 @@ automatically, read the report, fix it, and prove the fix with a before/after sc
   `compare` command.
 - Everything runs in **MOCK mode with no API key**. MOCK replies depend on the input, and CI runs
   MOCK only.
+
+## Disclaimer
+
+**This is an educational project.** The target app ("NovaBank Support") is deliberately vulnerable
+and fully synthetic: no real brands, people, keys or customer data. The scanner only talks to
+`localhost`, `127.0.0.1` and `::1` (parsed hostname, exact match, redirects never followed), so it
+can only attack the app included here. Never expose the target beyond localhost, and never point
+attack tooling at systems you do not own or have written permission to test.
 
 ## Architecture
 
@@ -61,7 +63,11 @@ filtering, not real embeddings.
 
 ## Quick start
 
+Requires Python 3.12 or newer.
+
 ```bash
+git clone https://github.com/yotamgillon/llm-red-team-lab.git
+cd llm-red-team-lab
 pip install -e ".[dev]"
 uvicorn target.main:app --port 8000          # terminal 1 (MOCK mode, no key needed)
 redteam scan --target http://localhost:8000  # terminal 2; exit code 1 if any finding
@@ -142,6 +148,7 @@ proves the code-level controls, not how a real LLM behaves.
 ## Known limitations
 
 - MOCK mode simulates the prompt-level defences; it says nothing about real-model robustness.
+- The Anthropic client path is implemented but has not been run against a real key.
 - Producing attacker-chosen text has no hard code control: the output filter cannot tell it from a
   normal answer. A paraphrased injection plus a model that ignores its prompt still gets through.
 - Client-supplied `assistant` history turns are scanned and capped but not authenticated
